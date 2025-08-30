@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频转音频工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .btn-hover {
+                transition: all 0.3s ease;
+            }
+            .btn-hover:hover {
+                transform: translateY(-2px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-light to-blue-50 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-12 max-w-3xl">
+        <!-- 标题区域 -->
+        <div class="text-center mb-10">
+            <h1 class="text-[clamp(1.8rem,5vw,2.5rem)] font-bold text-dark mb-3">
+                <i class="fa fa-video-camera text-primary mr-2"></i>视频转音频工具
+            </h1>
+            <p class="text-gray-600 max-w-xl mx-auto">
+                支持多平台视频下载与格式转换，可自定义保存文件名
+            </p>
+        </div>
+        
+        <!-- 主内容卡片 -->
+        <div class="bg-white rounded-xl p-6 md:p-8 card-shadow mb-8">
+            <!-- 输入表单 -->
+            <form id="converterForm" class="space-y-6">
+                <!-- 视频URL输入 -->
+                <div>
+                    <label for="videoUrl" class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fa fa-link text-primary mr-1"></i>视频URL
+                    </label>
+                    <input 
+                        type="url" 
+                        id="videoUrl" 
+                        placeholder="输入视频链接 (支持B站、YouTube等)" 
+                        required
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
+                    >
+                </div>
+                
+                <!-- 文件名自定义 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="videoFileName" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fa fa-file-video-o text-primary mr-1"></i>视频文件名
+                        </label>
+                        <input 
+                            type="text" 
+                            id="videoFileName" 
+                            placeholder="视频保存名称 (可选)" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
+                        >
+                    </div>
+                    <div>
+                        <label for="audioFileName" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fa fa-file-audio-o text-primary mr-1"></i>音频文件名
+                        </label>
+                        <input 
+                            type="text" 
+                            id="audioFileName" 
+                            placeholder="音频保存名称 (可选)" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
+                        >
+                    </div>
+                </div>
+                
+                <!-- 格式和质量选择 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="audioFormat" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fa fa-music text-primary mr-1"></i>音频格式
+                        </label>
+                        <select 
+                            id="audioFormat" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
+                        >
+                            <option value="mp3">MP3 (兼容性强)</option>
+                            <option value="wav">WAV (无损)</option>
+                            <option value="m4a">M4A (苹果设备)</option>
+                            <option value="flac">FLAC (无损压缩)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="audioQuality" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fa fa-sliders text-primary mr-1"></i>音频质量 (0-9)
+                        </label>
+                        <input 
+                            type="range" 
+                            id="audioQuality" 
+                            min="0" 
+                            max="9" 
+                            value="4"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                        >
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>最高质量</span>
+                            <span id="qualityValue">4</span>
+                            <span>最低质量</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 进度条区域 (默认隐藏) -->
+                <div id="progressContainer" class="hidden">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-medium text-gray-700">处理进度</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3.5 overflow-hidden">
+                        <div 
+                            id="progressBar" 
+                            class="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-300"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <p id="progressMessage" class="text-sm text-gray-600 mt-1">准备开始处理...</p>
+                </div>
+                
+                <!-- 按钮区域 -->
+                <div class="pt-2">
+                    <button 
+                        type="submit" 
+                        id="convertButton"
+                        class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-lg transition-all btn-hover flex items-center justify-center"
+                    >
+                        <i class="fa fa-cog mr-2"></i>开始处理
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 结果区域 (默认隐藏) -->
+        <div id="resultContainer" class="hidden bg-white rounded-xl p-6 md:p-8 card-shadow mb-8">
+            <h2 class="text-xl font-semibold text-dark mb-4 flex items-center">
+                <i class="fa fa-check-circle text-secondary mr-2"></i>处理完成
+            </h2>
+            <div class="space-y-4">
+                <div class="p-4 border border-gray-100 rounded-lg bg-gray-50">
+                    <h3 class="font-medium text-gray-800 mb-2">视频文件</h3>
+                    <a 
+                        id="videoDownloadLink" 
+                        href="#" 
+                        class="inline-flex items-center text-primary hover:text-primary/80 font-medium btn-hover"
+                        download
+                    >
+                        <i class="fa fa-download mr-2"></i>
+                        <span id="videoFileNameDisplay">下载视频</span>
+                    </a>
+                </div>
+                <div class="p-4 border border-gray-100 rounded-lg bg-gray-50">
+                    <h3 class="font-medium text-gray-800 mb-2">音频文件</h3>
+                    <a 
+                        id="audioDownloadLink" 
+                        href="#" 
+                        class="inline-flex items-center text-primary hover:text-primary/80 font-medium btn-hover"
+                        download
+                    >
+                        <i class="fa fa-download mr-2"></i>
+                        <span id="audioFileNameDisplay">下载音频</span>
+                    </a>
+                </div>
+            </div>
+            <button 
+                id="newConversionButton"
+                class="mt-6 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-all btn-hover"
+            >
+                <i class="fa fa-refresh mr-2"></i>新的转换
+            </button>
+        </div>
+        
+        <!-- 帮助信息 -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl p-5 card-shadow text-sm text-gray-600">
+            <h3 class="font-medium text-gray-800 mb-2 flex items-center">
+                <i class="fa fa-info-circle text-primary mr-2"></i>使用说明
+            </h3>
+            <ul class="list-disc pl-5 space-y-1">
+                <li>支持B站、YouTube、抖音等主流视频平台链接</li>
+                <li>若不填写自定义文件名，将使用原视频名称</li>
+                <li>音频质量0为最高，9为最低，推荐使用3-5</li>
+                <li>处理完成后可同时下载视频和音频文件</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 质量滑块显示当前值
+        const qualitySlider = document.getElementById('audioQuality');
+        const qualityValue = document.getElementById('qualityValue');
+        
+        qualitySlider.addEventListener('input', () => {
+            qualityValue.textContent = qualitySlider.value;
+        });
+        
+        // 表单提交处理
+        const form = document.getElementById('converterForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressMessage = document.getElementById('progressMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const convertButton = document.getElementById('convertButton');
+        const newConversionButton = document.getElementById('newConversionButton');
+        
+        // 模拟进度更新的函数
+        function updateProgress(percent, message) {
+            progressBar.style.width = `${percent}%`;
+            progressPercent.textContent = `${percent}%`;
+            progressMessage.textContent = message;
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 获取表单数据
+            const url = document.getElementById('videoUrl').value;
+            const format = document.getElementById('audioFormat').value;
+            const quality = parseInt(document.getElementById('audioQuality').value);
+            const videoFileName = document.getElementById('videoFileName').value;
+            const audioFileName = document.getElementById('audioFileName').value;
+            
+            // 显示进度条，隐藏结果
+            progressContainer.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            convertButton.disabled = true;
+            convertButton.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>处理中...';
+            updateProgress(0, '开始解析视频链接...');
+            
+            try {
+                // 模拟进度更新（实际项目中可以通过WebSocket或轮询获取真实进度）
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress >= 30) progress = 30;
+                    updateProgress(progress, '正在下载视频...');
+                }, 800);
+                
+                // 发送请求到后端
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url,
+                        format,
+                        quality,
+                        videoFileName,
+                        audioFileName
+                    })
+                });
+                
+                clearInterval(progressInterval);
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 完成进度条
+                    updateProgress(100, '处理完成！');
+                    
+                    // 更新结果区域
+                    document.getElementById('videoDownloadLink').href = data.video_url;
+                    document.getElementById('audioDownloadLink').href = data.audio_url;
+                    
+                    // 显示自定义文件名或默认名
+                    const videoNameDisplay = document.getElementById('videoFileNameDisplay');
+                    const audioNameDisplay = document.getElementById('audioFileNameDisplay');
+                    
+                    videoNameDisplay.textContent = videoFileName 
+                        ? `${videoFileName}${data.video_ext}` 
+                        : `视频文件${data.video_ext}`;
+                    
+                    audioNameDisplay.textContent = audioFileName 
+                        ? `${audioFileName}.${format}` 
+                        : `音频文件.${format}`;
+                    
+                    // 显示结果，隐藏进度条
+                    setTimeout(() => {
+                        resultContainer.classList.remove('hidden');
+                        progressContainer.classList.add('hidden');
+                        convertButton.disabled = false;
+                        convertButton.innerHTML = '<i class="fa fa-cog mr-2"></i>开始处理';
+                    }, 800);
+                } else {
+                    throw new Error(data.error || '处理失败，请重试');
+                }
+            } catch (error) {
+                updateProgress(0, `错误: ${error.message}`);
+                progressBar.classList.remove('from-primary', 'to-secondary');
+                progressBar.classList.add('from-red-500');
+                convertButton.disabled = false;
+                convertButton.innerHTML = '<i class="fa fa-cog mr-2"></i>开始处理';
+            }
+        });
+        
+        // 新的转换按钮
+        newConversionButton.addEventListener('click', () => {
+            resultContainer.classList.add('hidden');
+            form.reset();
+            qualityValue.textContent = '4';
+        });
+    </script>
+</body>
+</html>
